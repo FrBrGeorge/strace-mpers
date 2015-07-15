@@ -45,6 +45,7 @@ check_PROGRAMS = \
 	umovestr2 \
 	unix-pair-send-recv \
 	utime \
+	utimensat \
 	wait \
 	xattr
 
@@ -98,6 +99,7 @@ TESTS = \
 	uid32.test \
 	uio.test \
 	utime.test \
+	utimensat.test \
 	wait.test \
 	xattr.test \
 	count.test \
