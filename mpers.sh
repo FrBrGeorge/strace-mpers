@@ -26,6 +26,7 @@ for m_type in ${m_types}; do
 		/^[[:space:]]*<[^>]\+><[^>]\+>: Abbrev Number: 0/d
 		s/^[[:space:]]*<[[:xdigit:]]\+>[[:space:]]\+//
 		s/^[[:space:]]*\(\(<[[:xdigit:]]\+>\)\{2\}\):[[:space:]]\+/\1\n/
+		s/[[:space:]]\+$//
 		p
 		' $file |
 		awk -v VAR_NAME="$VAR_NAME" -v ARCH_FLAG="${ARCH_FLAG#-}" \
