@@ -50,7 +50,6 @@
 /* #include <ctype.h> */
 #include <string.h>
 #include <errno.h>
-#include <signal.h>
 #include <time.h>
 #include <sys/time.h>
 #include <sys/syscall.h>
@@ -201,12 +200,21 @@ extern char *stpcpy(char *dst, const char *src);
 # define PERSONALITY0_WORDSIZE 8
 # define PERSONALITY1_WORDSIZE 4
 # define PERSONALITY2_WORDSIZE 4
+# ifdef HAVE_M32_COMPILE
+#  define PERSONALITY1_INCLUDE "m32_funcs.h"
+# endif
+# ifdef HAVE_MX32_COMPILE
+#  define PERSONALITY2_INCLUDE "mx32_funcs.h"
+# endif
 #endif
 
 #ifdef X32
 # define SUPPORTED_PERSONALITIES 2
 # define PERSONALITY0_WORDSIZE 4
 # define PERSONALITY1_WORDSIZE 4
+# ifdef HAVE_M32_COMPILE
+#  define PERSONALITY1_INCLUDE "m32_funcs.h"
+# endif
 #endif
 
 #ifdef ARM
@@ -244,6 +252,13 @@ extern char *stpcpy(char *dst, const char *src);
 #endif
 #ifndef PERSONALITY0_WORDSIZE
 # define PERSONALITY0_WORDSIZE SIZEOF_LONG
+#endif
+
+#ifndef PERSONALITY1_INCLUDE
+# define PERSONALITY1_INCLUDE "empty.h"
+#endif
+#ifndef PERSONALITY2_INCLUDE
+# define PERSONALITY2_INCLUDE "empty.h"
 #endif
 
 typedef struct sysent {
@@ -564,7 +579,6 @@ extern void printtv_bitness(struct tcb *, long, enum bitness_t, int);
 extern char *sprinttv(char *, struct tcb *, long, enum bitness_t, int special);
 extern void print_timespec(struct tcb *, long);
 extern void sprint_timespec(char *, struct tcb *, long);
-extern void printsiginfo(const siginfo_t *, bool);
 extern void printsiginfo_at(struct tcb *tcp, long addr);
 extern void printfd(struct tcb *, int);
 extern bool print_sockaddr_by_inode(const unsigned long, const char *);
@@ -702,8 +716,25 @@ extern unsigned num_quals;
 #define SCNO_IN_RANGE(scno) \
 	((unsigned long)(scno) < nsyscalls)
 
-#ifndef SYS_FUNC_NAME
-# define SYS_FUNC_NAME(syscall_name) sys_ ## syscall_name
+#ifdef IN_MPERS
+# define DEF_MPERS_TYPE(args) < args.h>
+# ifdef MPERS_IS_M32
+#  define MPERS_PREFIX m32_
+#  define MPERS_DEFS "m32_defs.h"
+# elif defined MPERS_IS_MX32
+#  define MPERS_PREFIX mx32_
+#  define MPERS_DEFS "mx32_defs.h"
+# endif
+#else
+# define MPERS_PREFIX
+# define DEF_MPERS_TYPE(args) "empty.h"
+# define MPERS_DEFS "empty.h"
 #endif
+
+#define MPERS_FUNC_NAME__(prefix, name) prefix ## name
+#define MPERS_FUNC_NAME_(prefix, name) MPERS_FUNC_NAME__(prefix, name)
+#define MPERS_FUNC_NAME(name) MPERS_FUNC_NAME_(MPERS_PREFIX, name)
+
+#define SYS_FUNC_NAME(syscall_name) MPERS_FUNC_NAME(sys_ ## syscall_name)
 
 #define SYS_FUNC(syscall_name) int SYS_FUNC_NAME(syscall_name)(struct tcb *tcp)

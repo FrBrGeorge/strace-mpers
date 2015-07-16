@@ -13,6 +13,7 @@ AC_CANONICAL_HOST
 AC_PROG_CC
 AX_PROG_CC_FOR_BUILD
 AC_USE_SYSTEM_EXTENSIONS
+AC_PROG_RANLIB
 
 AC_MSG_CHECKING([for supported architecture])
 case "$host_cpu" in
@@ -853,32 +854,50 @@ if test "$arch" = mips && test "$no_create" != yes; then
 	fi
 fi
 
+compile_m32=no
 have_m32=no
 case "$arch" in
 	aarch64|powerpc64|sparc64|tile|x32|x86_64)
-	AC_MSG_CHECKING([for -m32 runtime support])
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS -m32"
-	AC_RUN_IFELSE([AC_LANG_SOURCE([[int main(){return 0;}]])],
-		[have_m32=yes],[have_m32=no],[have_m32=no])
-	CFLAGS="$saved_CFLAGS"
+	AC_MSG_CHECKING([for -m32 compile support])
+	AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(){return 0;}]])],
+		[compile_m32=yes],[compile_m32=no])
+	AC_MSG_RESULT($compile_m32)
+	AC_MSG_CHECKING([for -m32 runtime support])
+    if test $compile_m32 = yes; then
+	AC_DEFINE([HAVE_M32_COMPILE], 1, [Define to 1 if you have -m32 compile support])
+        AC_RUN_IFELSE([AC_LANG_SOURCE([[int main(){return 0;}]])],
+            [have_m32=yes],[have_m32=no],[have_m32=no])
+    fi
 	AC_MSG_RESULT($have_m32)
+	CFLAGS="$saved_CFLAGS"
 	;;
 esac
+AM_CONDITIONAL([HAVE_M32_COMPILE], [test "$compile_m32" = yes])
 AM_CONDITIONAL([HAVE_M32_RUNTIME], [test "$have_m32" = yes])
 
+compile_mx32=no
 have_mx32=no
 case "$arch" in
 	x86_64)
-	AC_MSG_CHECKING([for -mx32 runtime support])
 	saved_CFLAGS="$CFLAGS"
 	CFLAGS="$CFLAGS -mx32"
-	AC_RUN_IFELSE([AC_LANG_SOURCE([[int main(){return 0;}]])],
-		[have_mx32=yes],[have_mx32=no],[have_mx32=no])
-	CFLAGS="$saved_CFLAGS"
+	AC_MSG_CHECKING([for -mx32 compile support])
+	AC_COMPILE_IFELSE([AC_LANG_SOURCE([[int main(){return 0;}]])],
+		[compile_mx32=yes],[compile_mx32=no])
+	AC_MSG_RESULT($compile_mx32)
+	AC_MSG_CHECKING([for -mx32 runtime support])
+    if test $compile_mx32 = yes; then
+	AC_DEFINE([HAVE_MX32_COMPILE], 1, [Define to 1 if you have -mx32 compile support])
+        AC_RUN_IFELSE([AC_LANG_SOURCE([[int main(){return 0;}]])],
+            [have_mx32=yes],[have_mx32=no],[have_mx32=no])
+    fi
 	AC_MSG_RESULT($have_mx32)
+	CFLAGS="$saved_CFLAGS"
 	;;
 esac
+AM_CONDITIONAL([HAVE_MX32_COMPILE], [test "$compile_mx32" = yes])
 AM_CONDITIONAL([HAVE_MX32_RUNTIME], [test "$have_mx32" = yes])
 
 AC_CONFIG_FILES([Makefile tests/Makefile tests-m32/Makefile tests-mx32/Makefile])

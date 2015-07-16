@@ -1,6 +1,7 @@
 #include "defs.h"
 #include "regs.h"
 #include "ptrace.h"
+#include <signal.h>
 
 #if defined HAVE_ASM_SIGCONTEXT_H && !defined HAVE_STRUCT_SIGCONTEXT
 # include <asm/sigcontext.h>

@@ -89,12 +89,14 @@ const struct_sysent sysent0[] = {
 };
 
 #if SUPPORTED_PERSONALITIES > 1
+# include PERSONALITY1_INCLUDE
 static const struct_sysent sysent1[] = {
 # include "syscallent1.h"
 };
 #endif
 
 #if SUPPORTED_PERSONALITIES > 2
+# include PERSONALITY2_INCLUDE
 static const struct_sysent sysent2[] = {
 # include "syscallent2.h"
 };

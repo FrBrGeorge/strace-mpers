@@ -25,6 +25,26 @@ AM_CPPFLAGS = -I$(builddir)/$(OS)/$(ARCH) \
 
 include xlat/Makemodule.am
 
+strace_CPPFLAGS = $(AM_CPPFLAGS)
+strace_LDFLAGS =
+strace_LDADD =
+noinst_LIBRARIES =
+
+if HAVE_M32_COMPILE
+noinst_LIBRARIES += lib-m32.a
+include mpers_m32_sources.am
+#lib_m32_a_SOURCES=
+lib_m32_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/mpers-m32 -DIN_MPERS -DMPERS_IS_M32
+strace_LDADD += lib-m32.a
+endif
+
+if HAVE_MX32_COMPILE
+noinst_LIBRARIES += lib-mx32.a
+include mpers_mx32_sources.am
+lib_mx32_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(builddir)/mpers-mx32 -DIN_MPERS -DMPERS_IS_MX32
+strace_LDADD += lib-mx32.a
+endif
+
 strace_SOURCES =	\
 	access.c	\
 	affinity.c	\
@@ -41,6 +61,7 @@ strace_SOURCES =	\
 	count.c		\
 	desc.c		\
 	dirent.c	\
+	empty.h		\
 	evdev.c		\
 	execve.c	\
 	exit.c		\
@@ -129,11 +150,9 @@ strace_SOURCES =	\
 
 if USE_LIBUNWIND
 strace_SOURCES += unwind.c
-strace_CPPFLAGS = $(AM_CPPFLAGS) $(libunwind_CPPFLAGS)
-strace_LDFLAGS = $(libunwind_LDFLAGS)
-strace_LDADD = $(libunwind_LIBS)
-else
-strace_CPPFLAGS = $(AM_CPPFLAGS)
+strace_CPPFLAGS += $(libunwind_CPPFLAGS)
+strace_LDFLAGS += $(libunwind_LDFLAGS)
+strace_LDADD += $(libunwind_LIBS)
 endif
 
 noinst_HEADERS = defs.h
@@ -568,7 +587,7 @@ EXTRA_DIST =				\
 srpm: dist-xz
 	rpmbuild --define '%_srcrpmdir .' -ts $(distdir).tar.xz
 
-BUILT_SOURCES = .version sys_func.h sen.h
+BUILT_SOURCES = .version mpers.stamp m32_defs.h mx32_defs.h m32_funcs.h mx32_funcs.h sen.h sys_func.h
 
 $(srcdir)/.version:
 	$(AM_V_GEN)echo $(VERSION) > $@-t && mv $@-t $@
@@ -579,6 +598,41 @@ sys_func.h: $(patsubst %,$(srcdir)/%,$(strace_SOURCES_c))
 	for f in $^; do \
 		sed -n 's/^SYS_FUNC(.*/extern &;/p' $$f; \
 	done | sort -u > $@
+
+mpers.stamp: $(patsubst %,$(srcdir)/%,$(strace_SOURCES_c))
+if HAVE_M32_COMPILE
+		for f in $^; do \
+			$(srcdir)/mpers.sh -m32 $$f "$(CC)" "$(DEFS) $(strace_CPPFLAGS)" || exit; \
+		done;
+endif
+if HAVE_MX32_COMPILE
+		for f in $^; do \
+			$(srcdir)/mpers.sh -mx32 $$f "$(CC)" "$(DEFS) $(strace_CPPFLAGS)" || exit; \
+		done;
+endif
+	touch mpers.stamp
+
+m32_defs.h: $(patsubst %,$(srcdir)/%,$(lib_m32_a_SOURCES))
+	for f in $^; do \
+		sed -n 's/^#include DEF_MPERS_TYPE(\([^)]\+\))/#ifdef MPERS_m32_\1\n#define \1 MPERS_m32_\1\n#endif/p' $$f; \
+	done > $@
+
+mx32_defs.h: $(patsubst %,$(srcdir)/%,$(lib_m32_a_SOURCES))
+	for f in $^; do \
+		sed -n 's/^#include DEF_MPERS_TYPE(\([^)]\+\))/#ifdef MPERS_mx32_\1\n#define \1 MPERS_mx32_\1\n#endif/p' $$f; \
+	done > $@
+
+m32_funcs.h: $(patsubst %,$(srcdir)/%,$(lib_m32_a_SOURCES))
+	for f in $^; do \
+		sed -n 's/^SYS_FUNC(\([^)]\+\))/#undef sys_\1\n#define sys_\1 m32_sys_\1/p' $$f; \
+	done > $@
+	echo '#include "sys_func.h"' >> $@
+
+mx32_funcs.h: $(patsubst %,$(srcdir)/%,$(lib_mx32_a_SOURCES))
+	for f in $^; do \
+		sed -n 's/^SYS_FUNC(\([^)]\+\))/#undef sys_\1\n#define sys_\1 mx32_sys_\1/p' $$f; \
+	done > $@
+	echo '#include "sys_func.h"' >> $@
 
 syscallent_names = subcall.h syscallent.h syscallent1.h \
 		   syscallent-n32.h syscallent-n64.h syscallent-o32.h
@@ -615,7 +669,10 @@ ioctlsort_LDFLAGS = $(AM_LDFLAGS) $(LDFLAGS_FOR_BUILD)
 ioctls_inc_h = $(wildcard $(srcdir)/$(OS)/$(ARCH)/ioctls_inc*.h)
 ioctlent_h = $(patsubst $(srcdir)/$(OS)/$(ARCH)/ioctls_inc%,ioctlent%,$(ioctls_inc_h))
 BUILT_SOURCES += $(ioctlent_h)
-CLEANFILES = sys_func.h sen.h $(ioctlent_h)
+CLEANFILES = $(ioctlent_h) mpers.stamp m32_defs.h mx32_defs.h m32_funcs.h mx32_funcs.h sen.h sys_func.h
+
+clean-local:
+	-rm -rf mpers-m32 mpers-mx32
 
 ioctlent%.h: ioctlsort%
 	./$< > $@

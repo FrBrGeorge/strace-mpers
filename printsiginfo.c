@@ -1,5 +1,15 @@
 #include "defs.h"
 
+#include DEF_MPERS_TYPE(siginfo_t)
+
+#include <signal.h>
+
+#include MPERS_DEFS
+
+#ifndef IN_MPERS
+#include "printsiginfo.h"
+#endif
+
 #include "xlat/sigbus_codes.h"
 #include "xlat/sigchld_codes.h"
 #include "xlat/sigfpe_codes.h"
@@ -164,6 +174,9 @@ print_si_info(const siginfo_t *sip, bool verbose)
 	}
 }
 
+#ifdef IN_MPERS
+static
+#endif
 void
 printsiginfo(const siginfo_t *sip, bool verbose)
 {
@@ -186,7 +199,7 @@ printsiginfo(const siginfo_t *sip, bool verbose)
 }
 
 void
-printsiginfo_at(struct tcb *tcp, long addr)
+MPERS_FUNC_NAME(printsiginfo_at)(struct tcb *tcp, long addr)
 {
 	siginfo_t si;
 	if (!addr) {

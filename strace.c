@@ -44,6 +44,7 @@
 #endif
 
 #include "ptrace.h"
+#include "printsiginfo.h"
 
 /* In some libc, these aren't declared. Do it ourself: */
 extern char **environ;
